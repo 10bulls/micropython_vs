@@ -173,7 +173,9 @@ LIBS = -lm -lgcc -mthumb
 
 #all: $(BUILD)/teensy $(BUILD)/main.hex 
 
-all2: $(BUILD)/teensy $(BUILD)/main.hex upload
+# all2: $(BUILD)/teensy $(BUILD)/main.hex upload
+
+all2: $(BUILD)/teensy $(BUILD)/main-mz.hex upload
 
 $(BUILD)/main.hex : $(BUILD)/main.elf
 
@@ -228,6 +230,13 @@ $(BUILD)/teensy/%.cpp.o : $(CORE_PATH)\%.cpp
 	$(ECHO) "CXX $<"
 	$(Q)$(CC) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
+ifeq ($(MEMZIP_DIR),)
+MEMZIP_DIR = memzip_files
+endif
+
+$(BUILD)/main-mz.hex: $(BUILD)/main.hex $(shell find ${MEMZIP_DIR} -type f)
+	@$(ECHO) "Creating $@"
+	$(Q).\add-memzip.bat $(subst /,\,$(abspath $<)) $(subst /,\,$@) $(subst /,\,${MEMZIP_DIR})
 
 #
 # .elf to .hex inference rule 
@@ -236,7 +245,7 @@ $(BUILD)/teensy/%.cpp.o : $(CORE_PATH)\%.cpp
 	$(ECHO) "HEX $<"
 	$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
 
-post_compile: $(BUILD)/main.hex
+post_compile: $(BUILD)/main-mz.hex
 	$(ECHO) "Preparing $@ for upload"
 	$(TOOLS_PATH)/teensy_post_compile -board=teensy31 -tools="$(TOOLS_PATH)" -path="$(realpath $(BUILD))" -file="$(basename $(<F))"
 
