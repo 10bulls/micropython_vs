@@ -15,7 +15,9 @@ endif
 
 # where py object files go (they have a name prefix to prevent filename clashes)
 
-PY_BUILD = $(BUILD)/py.
+PY_BUILD = $(BUILD)/py
+
+PY_QSTR_DEFS = $(PY_SRC)/qstrdefs.h
 
 # py object files
 
@@ -47,6 +49,7 @@ PY_O_BASENAME = \
 	map.o \
 	strtonum.o \
 	obj.o \
+	objarray.o \
 	objbool.o \
 	objboundmeth.o \
 	objcell.o \
@@ -59,6 +62,7 @@ PY_O_BASENAME = \
 	objfloat.o \
 	objfun.o \
 	objgenerator.o \
+	objgetitemiter.o \
 	objint.o \
 	objlist.o \
 	objmap.o \
@@ -74,14 +78,34 @@ PY_O_BASENAME = \
 	builtin.o \
 	builtinimport.o \
 	builtineval.o \
+	builtinmp.o \
 	vm.o \
 	showbc.o \
 	repl.o \
 	objzip.o \
+	sequence.o \
 
 # prepend the build destination prefix to the py object files
 
 PY_O = $(addprefix $(PY_BUILD), $(PY_O_BASENAME))
+
+
+# qstr data
+
+# Adding an order only dependency on $(PY_BUILD) causes $(PY_BUILD) to get
+# created before we run the script to generate the .h
+$(PY_BUILD)/qstrdefs.generated.h: | $(PY_BUILD)/
+$(PY_BUILD)/qstrdefs.generated.h: $(PY_QSTR_DEFS) $(QSTR_DEFS) $(PY_SRC)/makeqstrdata.py
+	$(ECHO) "makeqstrdata $(PY_QSTR_DEFS) $(QSTR_DEFS)"
+	$(Q)$(PYTHON) $(PY_SRC)/makeqstrdata.py $(PY_QSTR_DEFS) $(QSTR_DEFS) > $@
+
+# We don't know which source files actually need the generated.h (since
+# it is #included from str.h). The compiler generated dependencies will cause
+# the right .o's to get recompiled if the generated.h file changes. Adding
+# an order-only dependendency to all of the .o's will cause the generated .h
+# to get built before we try to compile any of them.
+$(PY_O): | $(PY_BUILD)/qstrdefs.generated.h
+
 
 $(PY_BUILD)emitnx64.o: $(PY_SRC)/emitnative.c $(PY_SRC)/emit.h $(MPTEENSY_SRC)/mpconfigport.h
 	$(ECHO) "CC $<"

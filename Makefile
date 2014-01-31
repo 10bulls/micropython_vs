@@ -12,13 +12,16 @@ COMPILER_PATH = $(TOOLS_PATH)\arm-none-eabi\bin
 CORE_PATH = $(ARDUINO)\hardware\teensy\cores/teensy3
 CORE_PATH2 := $(subst \,/,$(CORE_PATH))
 BUILD = ./build
+PYTHON = C:\Python27\python
 
-PY_ROOT = C:/cygwin/home/andyp/micropython
+PY_ROOT = C:/devt/arduino/micropython
 PY_SRC = $(PY_ROOT)/py
-PY_BUILD = $(BUILD)/py.
+PY_BUILD = $(BUILD)/py
 
 STM_SRC = $(PY_ROOT)/stm
 MPTEENSY_SRC = $(PY_ROOT)/teensy
+
+QSTR_DEFS = $(STM_SRC)/qstrdefsport.h
 
 #
 # includes
@@ -62,9 +65,11 @@ MPTEENSY_SRC_C = \
 	lexerfatfs.c \
 	lexermemzip.c \
 	memzip.c \
-	servo.c \
 	usart.c \
 	usb.c \
+
+#	servo.c \
+
 
 STM_SRC_C = \
 	malloc0.c \
@@ -118,6 +123,22 @@ TEENSY_OBJS := $(patsubst $(CORE_PATH2)%,$(BUILD)/teensy%,$(TEENSY_OBJS))
 
 OBJS := $(addprefix $(BUILD)/, $(SRC_OBJS)) $(MP_OBJS) $(TEENSY_OBJS) $(PY_O)
 
+
+# The following rule uses | to create an order only prereuisite. Order only
+# prerequisites only get built if they don't exist. They don't cause timestamp
+# checkng to be performed.
+#
+# $(sort $(var)) removes duplicates
+#
+# The net effect of this, is it causes the objects to depend on the
+# object directories (but only for existance), and the object directories
+# will be created if they don't exist.
+OBJ_DIRS = $(sort $(dir $(OBJS)))
+$(OBJS): | $(OBJ_DIRS)
+$(OBJ_DIRS):
+	-mkdir $(subst /,\,$@)
+
+
 #
 # configurable options
 #
@@ -147,7 +168,8 @@ LDFLAGS = -nostdlib -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(CORE_PATH)
 # LIBS = -lm
 # LIBS = -lgcc -lm
 
-LIBS = -lm -mthumb -L"C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\arm-none-eabi\lib" -L"C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\lib\gcc\arm-none-eabi\4.7.2\thumb2" -lgcc 
+# LIBS = -lm -mthumb -L"C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\arm-none-eabi\lib" -L"C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\lib\gcc\arm-none-eabi\4.7.2\thumb2" -lgcc 
+LIBS = -lm -lgcc -mthumb 
 
 #all: $(BUILD)/teensy $(BUILD)/main.hex 
 
@@ -161,6 +183,9 @@ $(BUILD)/main.elf: $(OBJS)
 	$(Q)$(SIZE) $@
 
 #	$(Q)$(CC) $(LDFLAGS) -o "$@" -Wl,-Map,$(@:.elf=.map) $(OBJS) $(LIBS)
+
+
+$(BUILD)/pymain.o: $(PY_BUILD)/qstrdefs.generated.h
 
 #
 # .c to .o inference rule
@@ -236,6 +261,12 @@ $(BUILD):
 
 $(BUILD)/teensy: $(BUILD)
 	-mkdir $(subst /,\,$(BUILD))\teensy
+
+$(BUILD)/py: $(BUILD)
+	-mkdir $(subst /,\,$(BUILD))\py
+
+$(BUILD)/py/: $(BUILD)
+	-mkdir $(subst /,\,$(BUILD))\py
 
 clean:
 	-rd /q /s $(subst /,\,$(BUILD))

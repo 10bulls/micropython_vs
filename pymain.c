@@ -6,7 +6,8 @@
 #include "nlr.h"
 #include "misc.h"
 #include "mpconfig.h"
-#include "mpqstr.h"
+// #include "mpqstr.h"
+#include "qstr.h"
 #include "lexer.h"
 #include "lexermemzip.h"
 #include "parse.h"
@@ -18,6 +19,7 @@
 #include "servo.h"
 #include "usb.h"
 #include "gc.h"
+#include "gccollect.h"
 #include "led.h"
 
 #include "Arduino.h"
@@ -54,6 +56,13 @@ static const char *help_text =
 "    pyb.rand()     -- get a 16-bit random number\n"
 #endif
 ;
+
+static bool repl_display_debugging_info = 0;
+
+static mp_obj_t pyb_set_repl_info(mp_obj_t o_value) {
+    repl_display_debugging_info = mp_obj_get_int(o_value);
+    return mp_const_none;
+}
 
 mp_obj_t pyb_analog_read(mp_obj_t pin_obj) {
     uint pin = mp_obj_get_int(pin_obj);
@@ -145,6 +154,40 @@ static mp_obj_t pyb_info(void) {
 void gc_helper_get_regs_and_clean_stack(machine_uint_t *regs, machine_uint_t heap_end);
 
 void gc_collect(void) {
+    uint32_t start = millis();
+    gc_collect_start();
+//  gc_collect_root((void**)&_ram_start, ((uint32_t)&_heap_start - (uint32_t)&_ram_start) / sizeof(uint32_t));
+	gc_collect_root((void**)RAM_START, ((uint32_t)&_heap_start - RAM_START) / sizeof(uint32_t));
+    machine_uint_t regs[10];
+    gc_helper_get_regs_and_clean_stack(regs, HEAP_END);
+    gc_collect_root((void**)HEAP_END, (RAM_END - HEAP_END) / sizeof(uint32_t)); // will trace regs since they now live in this function on the stack
+    gc_collect_end();
+    uint32_t ticks = millis() - start; // TODO implement a function that does this properly
+
+    if (0) {
+        // print GC info
+        gc_info_t info;
+        gc_info(&info);
+        printf("GC@%lu %lums\n", start, ticks);
+        printf(" %lu total\n", info.total);
+        printf(" %lu : %lu\n", info.used, info.free);
+        printf(" 1=%lu 2=%lu m=%lu\n", info.num_1block, info.num_2block, info.max_block);
+    }
+}
+
+static mp_obj_t pyb_gc(void) {
+    gc_collect();
+    return mp_const_none;
+}
+
+MP_DEFINE_CONST_FUN_OBJ_0(pyb_gc_obj, pyb_gc);
+
+
+#if 0
+void gc_helper_get_regs_and_clean_stack(machine_uint_t *regs, machine_uint_t heap_end);
+
+
+void gc_collect(void) {
     uint32_t start = micros();
     gc_collect_start();
     gc_collect_root((void**)RAM_START, (((uint32_t)&_heap_start) - RAM_START) / 4);
@@ -169,6 +212,7 @@ mp_obj_t pyb_gc(void) {
     gc_collect();
     return mp_const_none;
 }
+#endif
 
 mp_obj_t pyb_gpio(int n_args, mp_obj_t *args) {
     //assert(1 <= n_args && n_args <= 2);
@@ -191,6 +235,7 @@ mp_obj_t pyb_gpio(int n_args, mp_obj_t *args) {
 
 pin_error:
     nlr_jump(mp_obj_new_exception_msg_1_arg(MP_QSTR_ValueError, "pin %d does not exist", (void *)(machine_uint_t)pin));
+//	nlr_jump(mp_obj_new_exception_msg_1_arg(MP_QSTR_ValueError, "pin %s does not exist", pin_name));
 }
 
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_gpio_obj, 1, 2, pyb_gpio);
@@ -211,15 +256,32 @@ mp_obj_t pyb_hid_send_report(mp_obj_t arg) {
 static qstr pyb_config_source_dir = 0;
 static qstr pyb_config_main = 0;
 
+/*
 mp_obj_t pyb_source_dir(mp_obj_t source_dir) {
     pyb_config_source_dir = mp_obj_get_qstr(source_dir);
     printf("source_dir = '%s'\n", qstr_str(pyb_config_source_dir));
     return mp_const_none;
 }
+*/
+mp_obj_t pyb_source_dir(mp_obj_t source_dir) {
+    if (MP_OBJ_IS_STR(source_dir)) {
+        pyb_config_source_dir = source_dir;
+    }
+    return mp_const_none;
+}
 
+
+/*
 mp_obj_t pyb_main(mp_obj_t main) {
     pyb_config_main = mp_obj_get_qstr(main);
     printf("main = '%s'\n", qstr_str(pyb_config_main));
+    return mp_const_none;
+}
+*/
+mp_obj_t pyb_main(mp_obj_t main) {
+    if (MP_OBJ_IS_STR(main)) {
+        pyb_config_main = main;
+    }
     return mp_const_none;
 }
 
@@ -234,8 +296,11 @@ mp_obj_t pyb_led(mp_obj_t state) {
 }
 
 mp_obj_t pyb_run(mp_obj_t filename_obj) {
-    const char *filename = qstr_str(mp_obj_get_qstr(filename_obj));
-    do_file(filename);
+    // const char *filename = qstr_str(mp_obj_get_qstr(filename_obj));
+	if (MP_OBJ_IS_STR(filename_obj)) {
+		const char *filename = filename_obj;
+		do_file(filename);
+	}
     return mp_const_none;
 }
 
@@ -341,6 +406,7 @@ bool do_file(const char *filename) {
     qstr parse_exc_id;
     const char *parse_exc_msg;
     mp_parse_node_t pn = mp_parse(lex, MP_PARSE_FILE_INPUT, &parse_exc_id, &parse_exc_msg);
+    qstr source_name = mp_lexer_source_name(lex);
 
     if (pn == MP_PARSE_NODE_NULL) {
         // parse error
@@ -349,10 +415,12 @@ bool do_file(const char *filename) {
         mp_lexer_free(lex);
         return false;
     }
+	
+	mp_lexer_free(lex);
 
-    mp_lexer_free(lex);
+    mp_obj_t module_fun = mp_compile(pn, source_name, false);
+    mp_parse_node_free(pn);
 
-    mp_obj_t module_fun = mp_compile(pn, false);
     if (module_fun == mp_const_none) {
         return false;
     }
@@ -364,13 +432,18 @@ bool do_file(const char *filename) {
         return true;
     } else {
         // uncaught exception
-        mp_obj_print((mp_obj_t)nlr.ret_val, PRINT_REPR);
-        printf("\n");
+        mp_obj_print_exception((mp_obj_t)nlr.ret_val);
         return false;
     }
 }
 
 void do_repl(void) {
+#if defined(USE_HOST_MODE) && MICROPY_HW_HAS_LCD
+    // in host mode, we enable the LCD for the repl
+    mp_obj_t lcd_o = rt_call_function_0(rt_load_name(qstr_from_str("LCD")));
+    rt_call_function_1(rt_load_attr(lcd_o, qstr_from_str("light")), mp_const_true);
+#endif
+
     stdout_tx_str("Micro Python for Teensy 3.1\r\n");
     stdout_tx_str("Type \"help()\" for more information.\r\n");
 
@@ -401,10 +474,11 @@ void do_repl(void) {
             }
         }
 
-        mp_lexer_t *lex = mp_lexer_new_from_str_len("<stdin>", vstr_str(&line), vstr_len(&line), 0);
+        mp_lexer_t *lex = mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_, vstr_str(&line), vstr_len(&line), 0);
         qstr parse_exc_id;
         const char *parse_exc_msg;
         mp_parse_node_t pn = mp_parse(lex, MP_PARSE_SINGLE_INPUT, &parse_exc_id, &parse_exc_msg);
+        qstr source_name = mp_lexer_source_name(lex);
 
         if (pn == MP_PARSE_NODE_NULL) {
             // parse error
@@ -414,22 +488,27 @@ void do_repl(void) {
         } else {
             // parse okay
             mp_lexer_free(lex);
-            mp_obj_t module_fun = mp_compile(pn, true);
+            mp_obj_t module_fun = mp_compile(pn, source_name, true);
+            mp_parse_node_free(pn);
             if (module_fun != mp_const_none) {
                 nlr_buf_t nlr;
-                uint32_t start = micros();
+//!                uint32_t start = sys_tick_counter;
+				uint32_t start = millis();
                 if (nlr_push(&nlr) == 0) {
                     rt_call_function_0(module_fun);
                     nlr_pop();
-                    // optional timing
-                    if (0) {
-                        uint32_t ticks = micros() - start; // TODO implement a function that does this properly
-                        printf("(took %lu ms)\n", ticks);
-                    }
                 } else {
                     // uncaught exception
-                    mp_obj_print((mp_obj_t)nlr.ret_val, PRINT_REPR);
-                    printf("\n");
+                    mp_obj_print_exception((mp_obj_t)nlr.ret_val);
+                }
+
+                // display debugging info if wanted
+                if (repl_display_debugging_info) {
+//                    uint32_t ticks = sys_tick_counter - start; // TODO implement a function that does this properly
+					uint32_t ticks = millis() - start; // TODO implement a function that does this properly
+                    printf("took %lu ms\n", ticks);
+                    gc_collect();
+                    pyb_info();
                 }
             }
         }
@@ -474,6 +553,7 @@ soft_reset:
     qstr_init();
     rt_init();
 
+#if 0
     // add some functions to the python namespace
     {
         rt_store_name(qstr_from_str_static("help"), rt_make_function_n(0, pyb_help));
@@ -495,6 +575,27 @@ soft_reset:
         rt_store_name(qstr_from_str_static("pyb"), m);
         rt_store_name(qstr_from_str_static("run"), rt_make_function_n(1, pyb_run));
     }
+#endif
+
+#if 1
+    // add some functions to the python namespace
+    {
+        rt_store_name(QSTR_FROM_STR_STATIC("help"), rt_make_function_n(0,pyb_help));
+        mp_obj_t m = mp_obj_new_module(QSTR_FROM_STR_STATIC("pyb"));
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("info"), rt_make_function_n(0,pyb_info));
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("source_dir"), rt_make_function_n(1,pyb_source_dir));
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("main"), rt_make_function_n(1,pyb_main));
+//        rt_store_attr(m, QSTR_FROM_STR_STATIC("gc"), rt_make_function_n(0,pyb_gc));
+		rt_store_attr(m, MP_QSTR_gc, (mp_obj_t)&pyb_gc_obj);
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("delay"), rt_make_function_n(1,pyb_delay));
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("led"), rt_make_function_n(1,pyb_led));
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("Led"), rt_make_function_n(1,pyb_Led));
+        rt_store_attr(m, QSTR_FROM_STR_STATIC("gpio"), (mp_obj_t)&pyb_gpio_obj);
+        rt_store_name(QSTR_FROM_STR_STATIC("pyb"), m);
+        rt_store_name(QSTR_FROM_STR_STATIC("run"), rt_make_function_n(1,pyb_run));
+    }
+#endif
+
 
     printf("About execute /boot.py\n");
     if (!do_file("/boot.py")) {
@@ -660,6 +761,8 @@ long int atol ( const char * str )
 	return 0;
 }
 
+// hopefully now in pyruntime
+/*
 size_t strlen(const char *s)
 {
 	size_t n=0;
@@ -667,7 +770,7 @@ size_t strlen(const char *s)
 	while (*s++) n++;
 	return n;
 }
-
+*/
 // TODO: actually write an efficient dtostrf()....
 char * dtostrf(float val, int width, unsigned int precision, char *buf)
 {
