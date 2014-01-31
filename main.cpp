@@ -5,42 +5,35 @@
 
 #include <Arduino.h>
 
+extern "C" {
+int py_main(void);
+}
+
 int main(void) {
 
 	pinMode(LED_BUILTIN,OUTPUT);
 
 	delay(1000);
 
-	for(;;)
+	Serial.begin(115200);
+
+	for(int i=0; i<50;i++)
 	{
-		delay(1000);
+		delay(50);
 
 		digitalWrite(LED_BUILTIN,1);
 		// printf("ON\n");
-		Serial.printf("ON\n");
+		Serial.println("ON");
+// 		Serial.write('O');
 
-		delay(1000);
+		delay(50);
 
 		digitalWrite(LED_BUILTIN,0);
 //		printf("OFF\n");
 
 	}
 
-
-	/*
-	for(;;)
-	{
-		delay(50);
-
-		digitalWrite(LED_BUILTIN,1);
-
-		delay(50);
-
-		digitalWrite(LED_BUILTIN,0);
-	
-
-	}
-	*/
+	py_main();
 
 	return 0;
 }
