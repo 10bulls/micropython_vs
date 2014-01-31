@@ -1,0 +1,212 @@
+# The name of your project (used to name the compiled .hex file)
+#TARGET = main
+
+#
+# .SUFFIXES are needed to get implicit rules working (eg .elf -> .hex )
+#
+
+.SUFFIXES: .hex .elf
+
+ARDUINO = C:\devt\arduino\arduino-1.0.5
+TOOLS_PATH = $(ARDUINO)\hardware\tools
+COMPILER_PATH = $(TOOLS_PATH)\arm-none-eabi\bin
+CORE_PATH = $(ARDUINO)\hardware\teensy\cores\teensy3
+
+ECHO = @echo
+
+AS = $(COMPILER_PATH)\arm-none-eabi-as
+CC = $(COMPILER_PATH)\arm-none-eabi-gcc
+LD = $(COMPILER_PATH)\arm-none-eabi-ld
+OBJCOPY = $(COMPILER_PATH)\arm-none-eabi-objcopy
+SIZE = $(COMPILER_PATH)\arm-none-eabi-size
+
+# g++ -c -g -Os -fno-exceptions -ffunction-sections -fdata-sections -Wall -mcpu=cortex-m4 -MMD -DUSB_VID=null -DUSB_PID=null -DARDUINO=105 
+#    -felide-constructors -std=gnu++0x -I"C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3" 
+#    -I"C:\devt\arduino\arduino-1.0.5\libraries\mpython" 
+#    -o "C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\vmtest.cpp.o"  
+#    "C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\vmtest.cpp"  
+#    -DF_CPU=96000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH -DVISUALMICRO_COMPILER_VER=1  -mthumb -nostdlib -D__MK20DX256__ -DTEENSYDUINO=117  -fno-rtti
+#
+
+# configurable options
+OPTIONS = -DF_CPU=96000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH -D__MK20DX256__ -DTEENSYDUINO=117 -DUSB_VID=null -DUSB_PID=null -DARDUINO=105 
+# -DARDUIO=104
+
+# CPPFLAGS = compiler options for C and C++
+# CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I. -I$(CORE_PATH)
+CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I. -I$(CORE_PATH)
+
+# compiler options for C++ only
+# -fno-exceptions -ffunction-sections -fdata-sections
+CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
+
+# -std=gnu99
+
+# compiler options for C only
+CFLAGS =
+
+# gcc -Os -Wl,--gc-sections -mcpu=cortex-m4 -L"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31" 
+#   -o "C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\vmtest.elf" 
+#   "C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\vmtest.cpp.o" 
+#   "C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\analog.c.o" 
+#   "C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\eeprom.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\keylayouts.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\math_helper.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\mk20dx128.c.o"
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\nonstd.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\pins_teensy.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\serial1.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\serial2.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\serial3.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\touch.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_desc.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_dev.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_joystick.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_keyboard.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_mem.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_midi.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_mouse.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_rawhid.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_seremu.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_serial.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\yield.c.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\AudioStream.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\avr_emulation.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\HardwareSerial1.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\HardwareSerial2.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\HardwareSerial3.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\IntervalTimer.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\IPAddress.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\main.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\new.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\Print.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\Stream.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\Tone.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_flightsim.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\usb_inst.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\WMath.cpp.o" 
+#	"C:\Users\andyp\AppData\Local\VMicro\Arduino\Builds\vmtest\teensy31\WString.cpp.o" 
+#	-lm  -mthumb -T"C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3\mk20dx256.ld"
+
+# linker options
+LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(CORE_PATH)\mk20dx256.ld
+
+# additional libraries to link
+LIBS = -lm
+
+# CFLAGS = -I. -I$(PY_SRC) -I$(CORE_PATH) -Wall -ansi 
+# CFLAGS = -I. -I$(CORE_PATH) -Wall -ansi -std=gnu99
+# LIBS = -lgcc
+
+BUILD = .\build
+
+SRC_C = \
+	main.c \
+
+TEENSY_SRC = \
+	CORE_PATH\vmtest.cpp \
+	CORE_PATH\analog.c \
+	CORE_PATH\eeprom.c \
+	CORE_PATH\keylayouts.c \
+	CORE_PATH\math_helper.c \
+	CORE_PATH\mk20dx128.c \
+	CORE_PATH\nonstd.c \
+	CORE_PATH\pins_teensy.c \
+	CORE_PATH\serial1.c \
+	CORE_PATH\serial2.c \
+	CORE_PATH\serial3.c \
+	CORE_PATH\touch.c \
+	CORE_PATH\usb_desc.c \
+	CORE_PATH\usb_dev.c \
+	CORE_PATH\usb_joystick.c \
+	CORE_PATH\usb_keyboard.c \
+	CORE_PATH\usb_mem.c \
+	CORE_PATH\usb_midi.c \
+	CORE_PATH\usb_mouse.c \
+	CORE_PATH\usb_rawhid.c \
+	CORE_PATH\usb_seremu.c \
+	CORE_PATH\usb_serial.c \
+	CORE_PATH\yield.c \
+	CORE_PATH\AudioStream.cpp \
+	CORE_PATH\avr_emulation.cpp \
+	CORE_PATH\HardwareSerial1.cpp \
+	CORE_PATH\HardwareSerial2.cpp \
+	CORE_PATH\HardwareSerial3.cpp \
+	CORE_PATH\IntervalTimer.cpp \
+	CORE_PATH\IPAddress.cpp \
+	CORE_PATH\main.cpp \
+	CORE_PATH\new.cpp \
+	CORE_PATH\Print.cpp \
+	CORE_PATH\Stream.cpp \
+	CORE_PATH\Tone.cpp \
+	CORE_PATH\usb_flightsim.cpp \
+	CORE_PATH\usb_inst.cpp \
+	CORE_PATH\WMath.cpp \
+	CORE_PATH\WString.cpp \
+
+# automatically create lists of the sources and objects
+# TODO: this does not handle Arduino libraries yet...
+TEENSY_OBJS = $(TEENSY_SRC:.cpp =.cpp.o )
+TEENSY_OBJS = $(TEENSY_OBJS:.c =.c.o )
+TEENSY_OBJS = $(TEENSY_OBJS:CORE_PATH=.build\teensy)
+
+#
+# Yucky, but nmake substitutions suck!
+# TODO: move to another make (cmake or just make)
+#
+TEENSY_SRC = $$(TEENSY_SRC:CORE_PATH=C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3)
+
+# SRC_CPP = 
+
+# OBJS := $(SRC_C:.c=.o) $(CPP_FILES:.cpp=.o)
+
+OBJS = $(SRC_C:.c =.o ) $(TEENSY_OBJS)
+
+all: $(BUILD)\main.hex
+
+$(BUILD)\main.hex : $(BUILD)\main.elf
+
+$(BUILD)\main.elf: $(OBJS)
+	$(ECHO) "LINK $@"
+	$(Q)$(CC) $(LDFLAGS) -o "$@" -Wl,-Map,$(@:.elf=.map) $(OBJS) $(LIBS)
+	$(Q)$(SIZE) $@
+
+#
+# .c to .o inference rule
+#
+{.}.c{$(BUILD)}.o:
+	$(ECHO) "CC $<"
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+#
+# .c to .o inference rule
+#
+{$(CORE_PATH)}.c{$(BUILD)}.o:
+	$(ECHO) "CC $<"
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+#
+# .elf to .hex inference rule (note, needs both to be added to .SUFFIXES)
+#
+.elf.hex:
+	$(ECHO) "HEX $<"
+	$(OBJCOPY) -O ihex -R .eeprom "$<" "$@"
+
+clean:
+	del /q $(BUILD)\*.*
+
+#
+# $$(@B) macro is the base name of the current target
+#
+#$(BUILD)\*.o : .\$$(@B).c 
+
+test: 
+	$(ECHO) "TEST"
+	$(ECHO) $(ARDUINO)
+	$(ECHO) $(TEENSY_OBJS)
+
+test2: 
+	$(ECHO) $(TEENSY_SRC)
+
+	
+#.PHONY: all all2 clean
