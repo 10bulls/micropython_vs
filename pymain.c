@@ -672,19 +672,20 @@ extern void (*__init_array_end []) (void) __attribute__((weak));
 extern void (*__fini_array_start []) (void) __attribute__((weak));
 extern void (*__fini_array_end []) (void) __attribute__((weak));
 
-/*
 extern void _init (void);
 extern void _fini (void);
-*/
 
-extern void _init (void)
+// Need these if using nostdlib
+// Don't need these if using nodefaultlib
+#if 0
+void _init (void)
 {
 }
 
-extern void _fini (void)
+void _fini (void)
 {
 }
-
+#endif
 
 /* Iterate over all the init routines.  */
 void
@@ -740,6 +741,31 @@ char * ultoa(unsigned long val, char *buf, int radix)
 		buf[i] = t;
 	}
 	return buf;
+}
+
+
+/*
+ * Register a function to be performed at exit or DSO unload.
+ */
+#if 0
+int
+_DEFUN (__cxa_atexit,
+	(fn, arg, d),
+	void (*fn) (void *) _AND
+	void *arg _AND
+	void *d)
+{
+  return __register_exitproc (__et_cxa, (void (*)(void)) fn, arg, d);
+}
+#endif
+
+/* Register a function to be called by exit or when a shared library
+   is unloaded.  This routine is like __cxa_atexit, but uses the
+   calling sequence required by the ARM EABI.  */
+int __aeabi_atexit (void *arg, void (*func) (void *), void *d)
+{
+	// AP: erm... no shared libraries and program doesn't exit
+  // return __cxa_atexit (func, arg, d);
 }
 
 // nonstd.c

@@ -39,12 +39,12 @@
     <NMakeBuildCommandLine>C:\MinGW\bin\mingw32-make</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>C:\MinGW\bin\mingw32-make clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>C:\MinGW\bin\mingw32-make clean</NMakeCleanCommandLine>
-    <IncludePath>C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3;C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\arm-none-eabi\include</IncludePath>
+    <IncludePath>C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3;C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\arm-none-eabi\include;libraries</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <NMakeOutput>micropython_vs.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <IncludePath>C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3;C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\arm-none-eabi\include</IncludePath>
+    <IncludePath>C:\devt\arduino\arduino-1.0.5\hardware\teensy\cores\teensy3;C:\devt\arduino\arduino-1.0.5\hardware\tools\arm-none-eabi\arm-none-eabi\include;libraries</IncludePath>
     <NMakeBuildCommandLine>C:\MinGW\bin\mingw32-make</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>C:\MinGW\bin\mingw32-make clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>C:\MinGW\bin\mingw32-make clean</NMakeCleanCommandLine>
@@ -58,9 +58,14 @@
     <None Include="util.mk" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="libraries\QTRSensors.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="myPrint.cpp" />
     <ClCompile Include="pymain.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libraries\QTRSensors.h" />
+    <ClInclude Include="libraries\ZumoReflectanceSensorArray.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

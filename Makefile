@@ -84,9 +84,10 @@ MP_OBJS = $(addprefix $(BUILD)/, $(MPTEENSY_SRC_C:.c=.c.o) $(STM_SRC_C:.c=.c.o) 
 
 # Use these rather than including everything in teensy
 TEENSY_C = \
+	analog.c \
 	mk20dx128.c \
 	pins_teensy.c \
-	analog.c \
+	serial3.c \
 	usb_desc.c \
 	usb_dev.c \
 	usb_mem.c \
@@ -101,11 +102,12 @@ TEENSY_CPP = \
 	usb_inst.cpp \
 	Stream.cpp \
 	WString.cpp \
-
-#	Print.cpp \
-
+	HardwareSerial3.cpp \
 
 TEENSY_CPP_FILES = $(addprefix $(CORE_PATH)/, $(TEENSY_CPP))
+
+# TODO: need vdprintf etc to get this working...
+#	Print.cpp \
 
 
 #
@@ -121,7 +123,15 @@ TEENSY_CPP_FILES := $(subst \,/,$(TEENSY_CPP_FILES))
 TEENSY_OBJS := $(TEENSY_C_FILES:.c=.c.o) $(TEENSY_CPP_FILES:.cpp=.cpp.o)
 TEENSY_OBJS := $(patsubst $(CORE_PATH2)%,$(BUILD)/teensy%,$(TEENSY_OBJS))
 
-OBJS := $(addprefix $(BUILD)/, $(SRC_OBJS)) $(MP_OBJS) $(TEENSY_OBJS) $(PY_O)
+
+ARDUINOLIB_CPP = \
+	QTRSensors.cpp \
+
+ARDUINOLIB_O := $(addprefix $(BUILD)/, $(ARDUINOLIB_CPP:.cpp=.cpp.o))
+
+ARDUINOLIB_CPP := $(addprefix libraries/, $(ARDUINOLIB_CPP))
+
+OBJS := $(addprefix $(BUILD)/, $(SRC_OBJS)) $(MP_OBJS) $(TEENSY_OBJS) $(PY_O) $(ARDUINOLIB_O)
 
 
 # The following rule uses | to create an order only prereuisite. Order only
@@ -147,7 +157,8 @@ OPTIONS = -DF_CPU=96000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH -D__MK20DX256__ -DTE
 #
 # CPPFLAGS = compiler options for C and C++
 #
-CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I. -I $(MPTEENSY_SRC) -I $(PY_SRC) -I $(STM_SRC) -I$(CORE_PATH)
+# CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -I. -I $(MPTEENSY_SRC) -I $(PY_SRC) -I $(STM_SRC) -I$(CORE_PATH) -Ilibraries
+CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nodefaultlibs -MMD $(OPTIONS) -I. -I $(MPTEENSY_SRC) -I $(PY_SRC) -I $(STM_SRC) -I$(CORE_PATH) -Ilibraries
 
 # compiler options for C++ only
 # -fno-exceptions -ffunction-sections -fdata-sections
@@ -162,7 +173,8 @@ CFLAGS = -std=gnu99
 
 # linker options
 # LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(CORE_PATH)\mk20dx256.ld
-LDFLAGS = -nostdlib -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(CORE_PATH)\mk20dx256py.ld
+# LDFLAGS = -nostdlib -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(CORE_PATH)\mk20dx256py.ld
+LDFLAGS = -nodefaultlibs -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(CORE_PATH)\mk20dx256py.ld
 
 # additional libraries to link
 # LIBS = -lm
@@ -222,6 +234,15 @@ $(BUILD)/%.c.o: $(STM_SRC)/%.c
 $(BUILD)/teensy/%.c.o : $(CORE_PATH)\%.c 
 	$(ECHO) "CC $<"
 	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+
+#
+# .c to .o inference rule
+#
+$(BUILD)/%.cpp.o : libraries/%.cpp
+	$(ECHO) "CXX $<"
+	$(Q)$(CC) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
+
 
 #
 # .c to .o inference rule
