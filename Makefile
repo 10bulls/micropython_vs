@@ -35,9 +35,11 @@ ECHO = @echo
 # ARM compiler toolchain...
 #
 AS = $(COMPILER_PATH)\arm-none-eabi-as
+AR = $(COMPILER_PATH)/arm-none-eabi-ar
 CC = $(COMPILER_PATH)\arm-none-eabi-gcc
 CXX = $(COMPILER_PATH)\arm-none-eabi-g++
 LD = $(COMPILER_PATH)\arm-none-eabi-ld
+RANLIB = $(COMPILER_PATH)/arm-none-eabi-ranlib
 OBJCOPY = $(COMPILER_PATH)\arm-none-eabi-objcopy
 SIZE = $(COMPILER_PATH)\arm-none-eabi-size
 
@@ -73,8 +75,11 @@ MPTEENSY_SRC_C = \
 
 STM_SRC_C = \
 	malloc0.c \
-	printf.c \
+	ap_printf.c \
 	string0.c \
+
+#	printf.c \
+
 
 STM_SRC_S = \
 	gchelper.s \
@@ -133,6 +138,8 @@ ARDUINOLIB_CPP := $(addprefix libraries/, $(ARDUINOLIB_CPP))
 
 OBJS := $(addprefix $(BUILD)/, $(SRC_OBJS)) $(MP_OBJS) $(TEENSY_OBJS) $(PY_O) $(ARDUINOLIB_O)
 
+LIB_OBJS := $(MP_OBJS) $(PY_O) 
+LIB_OBJS := $(filter-out %/main.o %/main.cpp.o %/pymain.o %/string0.c.o , $(LIB_OBJS))
 
 # The following rule uses | to create an order only prereuisite. Order only
 # prerequisites only get built if they don't exist. They don't cause timestamp
@@ -187,7 +194,12 @@ LIBS = -lm -lgcc -mthumb
 
 # all2: $(BUILD)/teensy $(BUILD)/main.hex upload
 
-all2: $(BUILD)/teensy $(BUILD)/main-mz.hex upload
+all2: $(BUILD)/teensy $(BUILD)/libmpython.a $(BUILD)/main-mz.hex upload
+
+$(BUILD)/libmpython.a: $(LIB_OBJS)
+	$(Q)$(AR) rcu "$@" $(LIB_OBJS) 
+	$(Q)$(RANLIB) $@
+
 
 $(BUILD)/main.hex : $(BUILD)/main.elf
 
@@ -279,8 +291,9 @@ upload: post_compile reboot
 
 test: 
 	$(ECHO) "TEST"
-	$(ECHO) $(ARDUINO)
-	$(ECHO) $(OBJS)
+	$(ECHO) $(LIB_OBJS)
+#	$(ECHO) $(ARDUINO)
+#	$(ECHO) $(OBJS)
 
 test2: 
 	$(ECHO) $(TEENSY_C_FILES)
