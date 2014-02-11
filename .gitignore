@@ -1,7 +1,0 @@
-build
-Debug/
-micropython_vs.opensdf
-micropython_vs.sdf
-micropython_vs.vcxproj.filters
-micropython_vs.vcxproj.user
-micropython_vs.suo
